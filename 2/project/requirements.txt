@@ -1,0 +1,6 @@
+# 丸子检测系统依赖
+flask==3.0.0
+flask-cors==4.0.0
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+pillow==10.2.0

@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香连止痢丸检测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #90caf9 100%);
+            min-height: 100vh;
+            color: #1a237e;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #1565c0;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+        .subtitle {
+            text-align: center;
+            color: #5c6bc0;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+        @media (max-width: 1000px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+        
+        /* 卡片样式 */
+        .card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(21, 101, 192, 0.15);
+            border: 1px solid rgba(33, 150, 243, 0.2);
+        }
+        .card-title {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1565c0;
+            font-weight: 600;
+        }
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, #42a5f5, #1565c0);
+            border-radius: 2px;
+        }
+        
+        /* 视频/图像容器 */
+        .video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #263238;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #90caf9;
+        }
+        #video, #image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #image { display: none; position: absolute; top: 0; left: 0; }
+        
+        /* 标定框 */
+        .calibration-frame {
+            position: absolute;
+            border: 3px solid #e53935;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 0 10px rgba(229, 57, 53, 0.6);
+        }
+        .frame-label {
+            display: none;  /* 隐藏预览框的尺寸标注 */
+        }
+        
+        /* 尺寸标注刻度 */
+        .ruler {
+            position: absolute;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ruler.horizontal {
+            left: 0;
+            right: 0;
+            height: 20px;
+        }
+        .ruler.horizontal.top { top: -22px; }
+        .ruler.horizontal.bottom { bottom: -22px; }
+        .ruler.vertical {
+            top: 0;
+            bottom: 0;
+            width: 20px;
+            flex-direction: column;
+        }
+        .ruler.vertical.left { left: -22px; }
+        .ruler.vertical.right { right: -22px; }
+        
+        .tick {
+            background: #e53935;
+        }
+        .tick.major { width: 2px; height: 10px; }
+        .tick.minor { width: 1px; height: 5px; }
+        .tick-label {
+            color: #e53935;
+            font-size: 10px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+        
+        /* 按钮样式 */
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #42a5f5, #1565c0); 
+            color: white; 
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 20px rgba(66, 165, 245, 0.4); 
+        }
+        .btn-success { 
+            background: linear-gradient(135deg, #66bb6a, #43a047); 
+            color: white; 
+        }
+        .btn-success:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 20px rgba(102, 187, 106, 0.4); 
+        }
+        .btn-secondary { 
+            background: rgba(21, 101, 192, 0.1); 
+            color: #1565c0; 
+            border: 1px solid rgba(21, 101, 192, 0.3); 
+        }
+        .btn-secondary:hover { 
+            background: rgba(21, 101, 192, 0.2); 
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        /* 结果区域 */
+        .result-box {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+        .count-display {
+            text-align: center;
+            padding: 20px;
+        }
+        .count-number {
+            font-size: 5em;
+            font-weight: bold;
+            color: #1565c0;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.8);
+        }
+        .count-label { color: #5c6bc0; margin-top: 5px; font-weight: 500; }
+        
+        /* 统计数据 */
+        .stats { margin-top: 20px; }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(21, 101, 192, 0.15);
+        }
+        .stat-label { color: #5c6bc0; font-weight: 500; }
+        .stat-value {
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 4px;
+            background: rgba(66, 165, 245, 0.2);
+            color: #1565c0;
+        }
+        
+        /* 参数设置 */
+        .settings { margin-top: 15px; }
+        .setting-row {
+            margin-bottom: 15px;
+        }
+        .setting-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #37474f;
+        }
+        .setting-value { color: #1565c0; font-weight: bold; }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(144, 202, 249, 0.5);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #42a5f5, #1565c0);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(21, 101, 192, 0.3);
+        }
+        
+        /* 提示信息 */
+        .info-box {
+            background: linear-gradient(135deg, #fff8e1, #ffecb3);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #f57c00;
+        }
+        .success-box {
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            color: #388e3c;
+        }
+        .error-box {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 1px solid rgba(244, 67, 54, 0.4);
+            color: #d32f2f;
+        }
+        
+        /* 导出按钮 */
+        .export-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .export-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(21, 101, 192, 0.1);
+            border: 1px solid rgba(21, 101, 192, 0.3);
+            color: #1565c0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .export-btn:hover { 
+            background: rgba(21, 101, 192, 0.2); 
+            transform: translateY(-1px);
+        }
+        
+        /* 加载动画 */
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(38, 50, 56, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border-radius: 12px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #42a5f5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 15px; color: #90caf9; }
+        
+        /* 框尺寸显示 */
+        .frame-size-box {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        .frame-size-title { font-size: 12px; color: #5c6bc0; }
+        .frame-size-value { font-size: 1.5em; font-weight: bold; margin-top: 5px; color: #1565c0; }
+        
+        /* 中间结果图展示区域 */
+        .intermediate-images {
+            margin-top: 20px;
+            display: none;
+        }
+        .intermediate-title {
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            color: #1565c0;
+        }
+        .intermediate-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        @media (max-width: 1200px) {
+            .intermediate-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .intermediate-grid { grid-template-columns: 1fr; }
+        }
+        .intermediate-item {
+            background: linear-gradient(135deg, #eceff1, #cfd8dc);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(96, 125, 139, 0.2);
+        }
+        .intermediate-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(21, 101, 192, 0.2);
+        }
+        .intermediate-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            display: block;
+            background: #263238;
+        }
+        .intermediate-label {
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #37474f;
+            background: rgba(255,255,255,0.5);
+        }
+        
+        /* 摄像头类型切换按钮 */
+        #btnStandard, #btnWideAngle {
+            background: transparent;
+            color: #5c6bc0;
+        }
+        #btnStandard.active {
+            background: linear-gradient(135deg, #42a5f5, #1565c0);
+            color: white;
+        }
+        #btnWideAngle.active {
+            background: linear-gradient(135deg, #ef5350, #c62828);
+            color: white;
+        }
+        
+        /* 折叠面板样式 */
+        .collapsible-title {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 30px;
+        }
+        .collapsible-title::after {
+            content: '▼';
+            position: absolute;
+            right: 0;
+            font-size: 12px;
+            color: #5c6bc0;
+            transition: transform 0.3s;
+        }
+        .collapsible-title.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        .collapsible-content {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .collapsible-content.collapsed {
+            max-height: 0;
+        }
+        
+        /* 香连止痢丸详细列表 */
+        .ball-list-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .ball-list-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .ball-list-table th {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #1565c0;
+            border-bottom: 2px solid rgba(33, 150, 243, 0.3);
+            position: sticky;
+            top: 0;
+        }
+        .ball-list-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(33, 150, 243, 0.1);
+            color: #37474f;
+        }
+        .ball-list-table tr:hover td {
+            background: rgba(227, 242, 253, 0.5);
+        }
+        .ball-list-table .ball-id {
+            color: #7e57c2;
+            font-weight: 600;
+        }
+        .ball-list-table .ball-size {
+            color: #1565c0;
+            font-weight: 500;
+        }
+        
+        /* 图片弹窗缩放 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(38, 50, 56, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .image-modal.active {
+            display: flex;
+        }
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            transition: transform 0.1s ease;
+            cursor: grab;
+        }
+        .image-modal img:active {
+            cursor: grabbing;
+        }
+        .image-modal .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            z-index: 1001;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+        }
+        .image-modal .close-btn:hover {
+            background: rgba(0,0,0,0.7);
+        }
+        .image-modal .modal-title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 16px;
+            background: rgba(21, 101, 192, 0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        .image-modal .modal-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+        .image-modal .modal-actions {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        .modal-action-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .modal-action-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>香连止痢丸检测系统</h1>
+        <p class="subtitle" id="subtitle">检测框 <span id="frameSizeLabel">6cm × 6cm</span> | <span id="cameraTypeLabel">标准摄像头</span></p>
+        
+        <!-- 摄像头类型切换 -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="display: inline-flex; align-items: center; gap: 15px;">
+                <div style="display: inline-flex; background: rgba(255,255,255,0.8); border-radius: 25px; padding: 4px; box-shadow: 0 2px 10px rgba(21, 101, 192, 0.15);">
+                    <button id="btnStandard" onclick="setCameraType('standard')" 
+                            style="padding: 10px 25px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s;">
+                        标准摄像头
+                    </button>
+                    <button id="btnWideAngle" onclick="setCameraType('wideangle')" 
+                            style="padding: 10px 25px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s;">
+                        广角摄像头
+                    </button>
+                </div>
+                <button id="cameraBtn" onclick="toggleCamera()" 
+                        style="padding: 10px 20px; border: 1px solid rgba(21, 101, 192, 0.3); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s; background: rgba(255,255,255,0.8); color: #1565c0;">
+                    关闭摄像头
+                </button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- 左侧：摄像头/图像区域 -->
+            <div>
+                <div class="card">
+                    <div class="card-title">摄像头预览</div>
+                    
+                    <div class="video-container">
+                        <video id="video" autoplay playsinline muted></video>
+                        <img id="image" alt="拍摄结果">
+                        
+                        <!-- 标定框 -->
+                        <div class="calibration-frame" id="frame">
+                            <!-- 尺寸标注 - 顶部 -->
+                            <div class="frame-label top" id="frameTopLabel">60mm</div>
+                            <!-- 尺寸标注 - 底部 -->
+                            <div class="frame-label bottom" id="frameBottomLabel">60mm</div>
+                            <!-- 尺寸标注 - 左侧 -->
+                            <div class="frame-label left" id="frameLeftLabel">60mm</div>
+                            <!-- 尺寸标注 - 右侧 -->
+                            <div class="frame-label right" id="frameRightLabel">60mm</div>
+                        </div>
+                        
+                        <!-- 加载动画 -->
+                        <div class="loading" id="loading">
+                            <div class="spinner"></div>
+                            <div class="loading-text">正在检测中...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 控制按钮 -->
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="captureBtn" onclick="capturePhoto()">
+                            拍照
+                        </button>
+                    </div>
+                    
+                    <div class="btn-group" id="detectBtns" style="display:none;">
+                        <button class="btn btn-secondary" onclick="retakePhoto()">重新拍照</button>
+                        <button class="btn btn-success" id="detectBtn" onclick="detectBalls()">开始检测</button>
+                    </div>
+                    
+                    <!-- 状态提示 -->
+                    <div id="statusBox"></div>
+                </div>
+                
+                <!-- 详细检测结果 -->
+                <div class="card" id="ballListCard" style="margin-top: 20px; display: none;">
+                    <div class="card-title">详细检测结果</div>
+                    <div class="ball-list-container" id="ballListContainer">
+                        <!-- 动态生成香连止痢丸列表 -->
+                    </div>
+                    <!-- 导出按钮 -->
+                    <div class="export-btns" style="margin-top: 15px;">
+                        <button class="export-btn" onclick="exportData('csv')">导出CSV</button>
+                        <button class="export-btn" onclick="exportData('json')">导出JSON</button>
+                    </div>
+                </div>
+                
+                <!-- 参数设置 -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title collapsible-title collapsed" onclick="toggleCollapse(this)">参数设置</div>
+                    
+                    <div class="settings collapsible-content collapsed">
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>二值化阈值</span>
+                                <span class="setting-value" id="thresholdValue">50</span>
+                            </div>
+                            <input type="range" id="threshold" min="20" max="100" value="50" 
+                                   oninput="updateSetting('threshold')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>最小直径 (mm)</span>
+                                <span class="setting-value" id="minSizeValue">0.5</span>
+                            </div>
+                            <input type="range" id="minSize" min="1" max="20" value="5"
+                                   oninput="updateSetting('minSize')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>最大直径 (mm)</span>
+                                <span class="setting-value" id="maxSizeValue">3.0</span>
+                            </div>
+                            <input type="range" id="maxSize" min="10" max="100" value="30"
+                                   oninput="updateSetting('maxSize')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>标定框宽度 (mm)</span>
+                                <span class="setting-value" id="frameWidthValue">60</span>
+                            </div>
+                            <input type="range" id="calibrationWidth" min="20" max="150" value="60"
+                                   oninput="updateSetting('calibrationWidth')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>标定框高度 (mm)</span>
+                                <span class="setting-value" id="calibrationHeightValue">60</span>
+                            </div>
+                            <input type="range" id="calibrationHeight" min="20" max="150" value="60"
+                                   oninput="updateSetting('calibrationHeight')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>畸变补偿系数</span>
+                                <span class="setting-value" id="distortionValue">1.00</span>
+                            </div>
+                            <input type="range" id="distortion" min="50" max="150" value="100"
+                                   oninput="updateSetting('distortion')">
+                            <div style="font-size: 11px; color: #78909c; margin-top: 5px;">
+                                标准摄像头: 1.00 | 广角摄像头: 0.85~0.95
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>尺寸校准系数</span>
+                                <span class="setting-value" id="sizeCalibrationValue">1.25</span>
+                            </div>
+                            <input type="range" id="sizeCalibration" min="5" max="30" value="12"
+                                   oninput="updateSetting('sizeCalibration')">
+                        </div>
+                        
+                        <div class="info-box" style="margin-top: 10px; font-size: 12px;">
+                            <p><b>检测不到香连止痢丸？</b></p>
+                            <p>1. 调整二值化阈值（20-100）</p>
+                            <p>2. 放宽尺寸范围（最小/最大直径）</p>
+                            <p>3. 检查标定框尺寸是否正确</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：结果区域 -->
+            <div>
+                <div class="card">
+                    <div class="card-title">检测结果</div>
+                    
+                    <div id="resultArea">
+                        <!-- 框尺寸 -->
+                        <div class="frame-size-box">
+                            <div class="frame-size-title">检测框尺寸</div>
+                            <div class="frame-size-value" id="frameRealSize">60 × 60 mm</div>
+                        </div>
+                        
+                        <!-- 数量统计 -->
+                        <div class="result-box">
+                            <div class="count-display">
+                                <div class="count-number" id="countNumber">0</div>
+                                <div class="count-label">检测到的香连止痢丸数量</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 统计数据 -->
+                        <div class="stats">
+                            <div class="stat-row">
+                                <span class="stat-label">最小直径</span>
+                                <span class="stat-value" id="minSizeDisplay">-- mm</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">最大直径</span>
+                                <span class="stat-value" id="maxSizeDisplay">-- mm</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">平均直径</span>
+                                <span class="stat-value" id="avgSize">-- mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 中间结果图展示 -->
+                <div class="card intermediate-images" id="intermediateImages" style="margin-top: 20px;">
+                    <div class="card-title collapsible-title collapsed" onclick="toggleCollapse(this)">中间处理结果 <span style="font-size:12px;color:#5c6bc0;">(点击图片查看大图)</span></div>
+                    <div class="intermediate-grid collapsible-content collapsed">
+                        <div class="intermediate-item" onclick="showImageModal('imgRoi', 'ROI区域')">
+                            <img id="imgRoi" src="" alt="ROI区域">
+                            <div class="intermediate-label">1. ROI区域</div>
+                        </div>
+                        <div class="intermediate-item" onclick="showImageModal('imgGray', '灰度化')">
+                            <img id="imgGray" src="" alt="灰度图">
+                            <div class="intermediate-label">2. 灰度化</div>
+                        </div>
+                        <div class="intermediate-item" onclick="showImageModal('imgBlurred', '高斯模糊')">
+                            <img id="imgBlurred" src="" alt="高斯模糊">
+                            <div class="intermediate-label">3. 高斯模糊</div>
+                        </div>
+                        <div class="intermediate-item" onclick="showImageModal('imgBinary', '二值化')">
+                            <img id="imgBinary" src="" alt="二值化">
+                            <div class="intermediate-label">4. 二值化</div>
+                        </div>
+                        <div class="intermediate-item" onclick="showImageModal('imgEroded', '腐蚀操作')">
+                            <img id="imgEroded" src="" alt="腐蚀">
+                            <div class="intermediate-label">5. 腐蚀操作</div>
+                        </div>
+                        <div class="intermediate-item" onclick="showImageModal('imgDilated', '膨胀操作')">
+                            <img id="imgDilated" src="" alt="膨胀">
+                            <div class="intermediate-label">6. 膨胀操作</div>
+                        </div>
+                        <div class="intermediate-item" onclick="showImageModal('imgContours', '轮廓检测')">
+                            <img id="imgContours" src="" alt="轮廓检测">
+                            <div class="intermediate-label">7. 轮廓检测</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 使用说明 -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">使用说明</div>
+                    <div class="info-box">
+                        <p>1. 选择摄像头类型（标准/广角）</p>
+                        <p>2. <b>将实际黑框对准画面中的红框</b></p>
+                        <p>3. 点击"拍照"按钮捕获图像</p>
+                        <p>4. 确认黑框与红框重合，点击"开始检测"</p>
+                        <p>5. 查看检测结果和中间处理图像</p>
+                        <p>6. 导出CSV/JSON格式数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <!-- 图片查看弹窗 -->
+    <div class="image-modal" id="imageModal" onclick="closeImageModal(event)">
+        <span class="close-btn" onclick="closeImageModal(event)">&times;</span>
+        <div class="modal-title" id="modalTitle">查看大图</div>
+        <img id="modalImage" src="" alt="大图" onclick="event.stopPropagation()">
+        <div class="modal-actions">
+            <button class="modal-action-btn" onclick="resetImageZoom(event)">重置大小</button>
+            <button class="modal-action-btn" onclick="downloadModalImage(event)">下载图片</button>
+        </div>
+        <div class="modal-info">滚轮缩放 | 拖拽移动 | 点击关闭</div>
+    </div>
+    
+    <script>
+        // 折叠/展开面板
+        function toggleCollapse(titleElement) {
+            const content = titleElement.nextElementSibling;
+            titleElement.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+        }
+        
+        // 全局变量
+        let video = document.getElementById('video');
+        let image = document.getElementById('image');
+        let canvas = document.getElementById('canvas');
+        let frame = document.getElementById('frame');
+        let loading = document.getElementById('loading');
+        let stream = null;
+        let capturedImageData = null;
+        let detectionResult = null;
+        
+        // 检测参数
+        let params = {
+            threshold: 50,          // 二值化阈值（降低以检测深色香连止痢丸）
+            calibrationWidth: 60,
+            calibrationHeight: 60,
+            distortion: 1.0,
+            sizeCalibration: 1.25,   // 尺寸校准系数（如果检测值偏大，减小此值）
+            frameOffsetX: 0,
+            frameOffsetY: 0,
+            frameWidthPct: 50,
+            frameHeightPct: 50,
+            cameraType: 'standard', // 摄像头类型：standard / wideangle
+            minSize: 0.5,           // 最小直径 (mm) - 放宽范围
+            maxSize: 3.0            // 最大直径 (mm) - 放宽范围
+        };
+        
+        // 设置摄像头类型
+        function setCameraType(type) {
+            params.cameraType = type;
+            
+            // 更新按钮样式
+            document.getElementById('btnStandard').classList.toggle('active', type === 'standard');
+            document.getElementById('btnWideAngle').classList.toggle('active', type === 'wideangle');
+            
+            // 更新标签
+            document.getElementById('cameraTypeLabel').textContent = 
+                type === 'standard' ? '标准摄像头' : '广角摄像头';
+            
+            // 根据摄像头类型设置畸变补偿系数
+            if (type === 'standard') {
+                // 标准摄像头无畸变，补偿系数为1.0
+                params.distortion = 1.0;
+                document.getElementById('distortion').value = 100;
+                document.getElementById('distortionValue').textContent = '1.00';
+            } else {
+                // 广角摄像头有桶形畸变，边缘物体被拉伸
+                // 通常需要根据实际校准，默认设置0.90作为起点
+                params.distortion = 0.90;
+                document.getElementById('distortion').value = 90;
+                document.getElementById('distortionValue').textContent = '0.90';
+            }
+            
+            // 显示提示
+            showInfo('已切换到' + (type === 'standard' ? '标准摄像头模式（无畸变补偿）' : '广角摄像头模式（启用畸变补偿）'));
+        }
+        
+        // 页面加载完成后初始化
+        function initCameraType() {
+            setCameraType('standard');
+        }
+        
+        // 启动摄像头
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                video.srcObject = stream;
+                
+                // 等待视频元数据加载完成
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = () => {
+                        video.play()
+                            .then(resolve)
+                            .catch(reject);
+                    };
+                    video.onerror = reject;
+                });
+                
+                video.style.display = 'block';
+                image.style.display = 'none';
+                frame.style.display = 'block';
+                updateFramePosition();
+                document.getElementById('cameraBtn').innerHTML = '关闭摄像头';
+                document.getElementById('captureBtn').disabled = false;
+                
+                console.log('摄像头已启动，分辨率:', video.videoWidth, 'x', video.videoHeight);
+            } catch (err) {
+                showError('无法访问摄像头: ' + err.message);
+            }
+        }
+        
+        // 关闭摄像头
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.style.display = 'none';
+            frame.style.display = 'none';
+            document.getElementById('cameraBtn').innerHTML = '开启摄像头';
+            document.getElementById('captureBtn').disabled = true;
+        }
+        
+        // 切换摄像头
+        function toggleCamera() {
+            if (stream) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        }
+        
+        // 更新标定框位置
+        function updateFramePosition() {
+            const container = video.parentElement;
+            const w = container.offsetWidth;
+            const h = container.offsetHeight;
+            
+            // 强制使用正方形 - 取宽高的较小值
+            const frameSize = Math.min(w * params.frameWidthPct / 100, h * params.frameHeightPct / 100);
+            
+            frame.style.width = frameSize + 'px';
+            frame.style.height = frameSize + 'px';
+            frame.style.left = (w / 2 - frameSize / 2 + w * params.frameOffsetX / 100) + 'px';
+            frame.style.top = (h / 2 - frameSize / 2 + h * params.frameOffsetY / 100) + 'px';
+            
+            // 更新尺寸标签 - 四边都显示相同尺寸
+            const sizeLabel = params.calibrationWidth + 'mm';
+            document.getElementById('frameTopLabel').textContent = sizeLabel;
+            document.getElementById('frameBottomLabel').textContent = sizeLabel;
+            document.getElementById('frameLeftLabel').textContent = sizeLabel;
+            document.getElementById('frameRightLabel').textContent = sizeLabel;
+        }
+        
+        // 拍照
+        async function capturePhoto() {
+            if (!stream) {
+                showError('请先开启摄像头');
+                return;
+            }
+            
+            // 确保视频正在播放
+            if (video.paused) {
+                try {
+                    await video.play();
+                } catch (e) {
+                    console.error('视频播放失败:', e);
+                }
+            }
+            
+            // 检查视频是否准备好（等待几帧）
+            let attempts = 0;
+            while ((video.videoWidth === 0 || video.videoHeight === 0) && attempts < 10) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                showError('摄像头未准备好，请刷新页面重试');
+                return;
+            }
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            let ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedImageData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // 验证图像数据
+            if (!capturedImageData || capturedImageData.length < 100) {
+                showError('拍照失败，请重试');
+                return;
+            }
+            
+            console.log('拍照成功，图像大小:', capturedImageData.length, 'bytes');
+            
+            image.src = capturedImageData;
+            image.style.display = 'block';
+            video.style.display = 'none';
+            // 保持红框显示，让用户确认黑框位置
+            frame.style.display = 'block';
+            
+            document.getElementById('captureBtn').parentElement.style.display = 'none';
+            document.getElementById('detectBtns').style.display = 'flex';
+            
+            // 显示提示 - 用户拍摄时应该已将黑框对准红框
+            showInfo('请确认黑框在红框内，然后点击"开始检测"');
+        }
+        
+        // 重新拍照
+        function retakePhoto() {
+            capturedImageData = null;
+            detectionResult = null;
+            image.style.display = 'none';
+            video.style.display = 'block';
+            frame.style.display = 'block';
+            
+            document.getElementById('captureBtn').parentElement.style.display = 'flex';
+            document.getElementById('detectBtns').style.display = 'none';
+            document.getElementById('statusBox').innerHTML = '';
+            
+            resetResults();
+        }
+        
+        // 自动检测黑框
+        async function autoDetectFrame() {
+            try {
+                let response = await fetch('/api/detect-frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: capturedImageData })
+                });
+                
+                let data = await response.json();
+                
+                if (data.found) {
+                    params.frameOffsetX = data.offsetX;
+                    params.frameOffsetY = data.offsetY;
+                    params.frameWidthPct = data.frameWidth;
+                    params.frameHeightPct = data.frameHeight;
+                    
+                    showSuccess('已自动识别黑框位置');
+                } else {
+                    showInfo('未检测到黑框，请手动调整参数');
+                }
+            } catch (err) {
+                console.error('自动检测失败:', err);
+            }
+        }
+        
+        // 执行检测
+        async function detectBalls() {
+            if (!capturedImageData) {
+                showError('请先拍照');
+                return;
+            }
+            
+            // 验证图像数据
+            if (capturedImageData.length < 100) {
+                showError('图像数据无效，请重新拍照');
+                return;
+            }
+            
+            loading.style.display = 'flex';
+            document.getElementById('detectBtn').disabled = true;
+            
+            try {
+                let response = await fetch('/api/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: capturedImageData,
+                        threshold: params.threshold,
+                        minSize: params.minSize,      // 使用可调整的参数
+                        maxSize: params.maxSize,      // 使用可调整的参数
+                        calibrationWidth: params.calibrationWidth,
+                        calibrationHeight: params.calibrationHeight,
+                        offsetX: params.frameOffsetX,
+                        offsetY: params.frameOffsetY,
+                        frameWidth: params.frameWidthPct,
+                        frameHeight: params.frameHeightPct,
+                        distortionCompensation: params.distortion,
+                        sizeCalibration: params.sizeCalibration
+                    })
+                });
+                
+                let data = await response.json();
+                
+                if (data.success) {
+                    detectionResult = data;
+                    updateResults(data);
+                    
+                    // 更新图像（后端返回的图像已包含红框标注）
+                    if (data.imageWithOverlay) {
+                        image.src = data.imageWithOverlay;
+                        capturedImageData = data.imageWithOverlay;
+                    }
+                    
+                    // 隐藏CSS红框，因为结果图像已包含标注
+                    frame.style.display = 'none';
+                    
+                    // 更新中间结果图
+                    if (data.intermediateImages) {
+                        updateIntermediateImages(data.intermediateImages);
+                    }
+                    
+                    showSuccess('检测完成，共找到 ' + data.count + ' 个香连止痢丸');
+                } else {
+                    showError(data.error || '检测失败');
+                }
+            } catch (err) {
+                showError('检测失败: ' + err.message);
+            } finally {
+                loading.style.display = 'none';
+                document.getElementById('detectBtn').disabled = false;
+            }
+        }
+        
+        // 更新中间结果图
+        function updateIntermediateImages(images) {
+            const container = document.getElementById('intermediateImages');
+            container.style.display = 'block';
+            
+            // 保持折叠状态，用户可手动点击展开
+            // 标题和内容默认已有 collapsed 类
+            
+            if (images.roi) document.getElementById('imgRoi').src = images.roi;
+            if (images.gray) document.getElementById('imgGray').src = images.gray;
+            if (images.blurred) document.getElementById('imgBlurred').src = images.blurred;
+            if (images.binary) document.getElementById('imgBinary').src = images.binary;
+            if (images.eroded) document.getElementById('imgEroded').src = images.eroded;
+            if (images.dilated) document.getElementById('imgDilated').src = images.dilated;
+            if (images.contours) document.getElementById('imgContours').src = images.contours;
+        }
+        
+        // 更新结果显示
+        function updateResults(data) {
+            document.getElementById('countNumber').textContent = data.count;
+            const minSize = (data.min_size || data.minSize || 0).toFixed(2);
+            const maxSize = (data.max_size || data.maxSize || 0).toFixed(2);
+            const avgSize = (data.avg_size || data.avgSize || 0).toFixed(2);
+            
+            document.getElementById('minSizeDisplay').textContent = minSize + ' mm';
+            document.getElementById('maxSizeDisplay').textContent = maxSize + ' mm';
+            document.getElementById('avgSize').textContent = avgSize + ' mm';
+            
+            // 更新香连止痢丸详细列表
+            updateBallList(data);
+            
+            // 不再需要在前端乘以校准系数，因为后端已经处理
+            // 保存原始数据用于导出
+        }
+        
+        // 更新香连止痢丸详细列表
+        function updateBallList(data) {
+            const container = document.getElementById('ballListContainer');
+            const card = document.getElementById('ballListCard');
+            
+            if (data.balls && data.balls.length > 0) {
+                card.style.display = 'block';
+                let html = `<table class="ball-list-table">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>直径 (mm)</th>
+                            <th>面积 (px²)</th>
+                            <th>圆整度</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                data.balls.forEach((ball, index) => {
+                    const size = (ball.diameter || ball.size || 0).toFixed(2);
+                    const area = ball.area || '--';
+                    const circularity = ball.circularity ? ball.circularity.toFixed(3) : '--';
+                    html += `<tr>
+                        <td class="ball-id">#${index + 1}</td>
+                        <td class="ball-size">${size}</td>
+                        <td>${area}</td>
+                        <td>${circularity}</td>
+                    </tr>`;
+                });
+                
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            } else {
+                card.style.display = 'none';
+            }
+        }
+        
+        // 重置结果
+        function resetResults() {
+            document.getElementById('countNumber').textContent = '0';
+            document.getElementById('minSizeDisplay').textContent = '-- mm';
+            document.getElementById('maxSizeDisplay').textContent = '-- mm';
+            document.getElementById('avgSize').textContent = '-- mm';
+            
+            // 隐藏香连止痢丸列表卡片
+            document.getElementById('ballListCard').style.display = 'none';
+            document.getElementById('ballListContainer').innerHTML = '';
+            
+            // 折叠中间结果图面板
+            const container = document.getElementById('intermediateImages');
+            container.style.display = 'none';
+            const title = container.querySelector('.collapsible-title');
+            const content = container.querySelector('.intermediate-grid');
+            if (title && content) {
+                title.classList.add('collapsed');
+                content.classList.add('collapsed');
+            }
+        }
+        
+        // 更新设置
+        function updateSetting(name) {
+            let value = document.getElementById(name === 'distortion' ? 'distortion' : 
+                                               name === 'sizeCalibration' ? 'sizeCalibration' : 
+                                               name === 'minSize' ? 'minSize' :
+                                               name === 'maxSize' ? 'maxSize' : name).value;
+            
+            if (name === 'distortion') {
+                value = value / 100;
+                document.getElementById('distortionValue').textContent = value.toFixed(2);
+                params.distortion = value;
+            } else if (name === 'sizeCalibration') {
+                value = value / 10;
+                document.getElementById('sizeCalibrationValue').textContent = value.toFixed(1);
+                params.sizeCalibration = value;
+            } else if (name === 'minSize') {
+                value = value / 10;
+                document.getElementById('minSizeValue').textContent = value.toFixed(1);
+                params.minSize = value;
+            } else if (name === 'maxSize') {
+                value = value / 10;
+                document.getElementById('maxSizeValue').textContent = value.toFixed(1);
+                params.maxSize = value;
+            } else if (name === 'threshold') {
+                document.getElementById('thresholdValue').textContent = value;
+                params.threshold = parseInt(value);
+            } else if (name === 'calibrationWidth') {
+                // 正方形模式：宽高同步
+                document.getElementById('frameWidthValue').textContent = value;
+                document.getElementById('calibrationHeightValue').textContent = value;
+                document.getElementById('calibrationHeight').value = value;
+                params.calibrationWidth = parseInt(value);
+                params.calibrationHeight = parseInt(value);
+                updateFrameSizeLabel();
+                updateFramePosition();
+            } else if (name === 'calibrationHeight') {
+                // 正方形模式：宽高同步
+                document.getElementById('calibrationHeightValue').textContent = value;
+                document.getElementById('frameWidthValue').textContent = value;
+                document.getElementById('calibrationWidth').value = value;
+                params.calibrationHeight = parseInt(value);
+                params.calibrationWidth = parseInt(value);
+                updateFrameSizeLabel();
+                updateFramePosition();
+            }
+        }
+        
+        // 更新检测框尺寸标签
+        function updateFrameSizeLabel() {
+            const widthCm = (params.calibrationWidth / 10).toFixed(1);
+            const heightCm = (params.calibrationHeight / 10).toFixed(1);
+            // 更新顶部副标题
+            document.getElementById('frameSizeLabel').textContent = widthCm + 'cm × ' + heightCm + 'cm';
+            // 更新右侧检测结果显示
+            document.getElementById('frameRealSize').textContent = 
+                params.calibrationWidth + ' × ' + params.calibrationHeight + ' mm';
+            // 更新预览框四边的标签
+            const sizeLabel = params.calibrationWidth + 'mm';
+            document.getElementById('frameTopLabel').textContent = sizeLabel;
+            document.getElementById('frameBottomLabel').textContent = sizeLabel;
+            document.getElementById('frameLeftLabel').textContent = sizeLabel;
+            document.getElementById('frameRightLabel').textContent = sizeLabel;
+        }
+        
+        // 导出数据到服务器
+        async function exportData(format) {
+            if (!detectionResult || detectionResult.count === 0) {
+                alert('没有可导出的数据');
+                return;
+            }
+            
+            try {
+                // 获取数据
+                const minSize = detectionResult.min_size || detectionResult.minSize || 0;
+                const maxSize = detectionResult.max_size || detectionResult.maxSize || 0;
+                const avgSize = detectionResult.avg_size || detectionResult.avgSize || 0;
+                
+                let content, filename;
+                
+                if (format === 'csv') {
+                    // 生成CSV内容
+                    const lines = [
+                        "# 香连止痢丸检测数据",
+                        `# 导出时间: ${new Date().toLocaleString()}`,
+                        `# 标定框尺寸: ${params.calibrationWidth}mm x ${params.calibrationHeight}mm`,
+                        `# 检测数量: ${detectionResult.count}`,
+                        `# 最小直径: ${minSize.toFixed(2)}mm`,
+                        `# 最大直径: ${maxSize.toFixed(2)}mm`,
+                        `# 平均直径: ${avgSize.toFixed(2)}mm`,
+                        "",
+                        "序号,直径(mm),X坐标(px),Y坐标(px),半径(px),面积(px),圆整度"
+                    ];
+                    
+                    detectionResult.balls.forEach((ball, i) => {
+                        lines.push(`${i+1},${ball.diameter.toFixed(3)},${ball.x.toFixed(1)},${ball.y.toFixed(1)},${ball.radius.toFixed(1)},${ball.area.toFixed(1)},${ball.circularity.toFixed(3)}`);
+                    });
+                    
+                    content = '\ufeff' + lines.join('\n');
+                    filename = '香连止痢丸检测数据.csv';
+                } else {
+                    // 生成JSON内容
+                    const jsonData = {
+                        '导出时间': new Date().toISOString(),
+                        '标定框尺寸': {
+                            '宽度_mm': params.calibrationWidth,
+                            '高度_mm': params.calibrationHeight
+                        },
+                        '检测结果': {
+                            '数量': detectionResult.count,
+                            '最小直径_mm': minSize,
+                            '最大直径_mm': maxSize,
+                            '平均直径_mm': avgSize
+                        },
+                        '香连止痢丸列表': detectionResult.balls
+                    };
+                    content = JSON.stringify(jsonData, null, 2);
+                    filename = '香连止痢丸检测数据.json';
+                }
+                
+                // 使用 File System Access API 选择保存位置
+                if ('showSaveFilePicker' in window) {
+                    const options = {
+                        suggestedName: filename,
+                        types: [{
+                            description: format === 'csv' ? 'CSV文件' : 'JSON文件',
+                            accept: format === 'csv' ? {'text/csv': ['.csv']} : {'application/json': ['.json']}
+                        }]
+                    };
+                    
+                    const handle = await window.showSaveFilePicker(options);
+                    const writable = await handle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                    showSuccess('文件已保存: ' + handle.name);
+                } else {
+                    // 兼容方案：传统下载方式
+                    const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showSuccess('文件已开始下载');
+                }
+                
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showError('导出失败: ' + err.message);
+                }
+            }
+        }
+        
+        // 显示提示
+        function showSuccess(msg) {
+            document.getElementById('statusBox').innerHTML = 
+                '<div class="info-box success-box" style="margin-top:15px;">' + msg + '</div>';
+        }
+        
+        function showError(msg) {
+            document.getElementById('statusBox').innerHTML = 
+                '<div class="info-box error-box" style="margin-top:15px;">' + msg + '</div>';
+        }
+        
+        function showInfo(msg) {
+            document.getElementById('statusBox').innerHTML = 
+                '<div class="info-box" style="margin-top:15px;">ℹ️ ' + msg + '</div>';
+        }
+        
+        // 图片弹窗功能 - 缩放和拖拽
+        let modalZoom = 1;
+        let modalPanX = 0;
+        let modalPanY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        
+        function showImageModal(imgId, title) {
+            const img = document.getElementById(imgId);
+            if (!img || !img.src) return;
+            
+            document.getElementById('modalImage').src = img.src;
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('imageModal').classList.add('active');
+            resetImageZoom();
+        }
+        
+        function closeImageModal(event) {
+            if (event && event.target.closest('.modal-action-btn')) return;
+            document.getElementById('imageModal').classList.remove('active');
+        }
+        
+        function resetImageZoom(event) {
+            if (event) event.stopPropagation();
+            modalZoom = 1;
+            modalPanX = 0;
+            modalPanY = 0;
+            updateModalImageTransform();
+        }
+        
+        function updateModalImageTransform() {
+            const img = document.getElementById('modalImage');
+            img.style.transform = `scale(${modalZoom}) translate(${modalPanX}px, ${modalPanY}px)`;
+        }
+        
+        function downloadModalImage(event) {
+            event.stopPropagation();
+            const img = document.getElementById('modalImage');
+            if (!img.src) return;
+            
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = document.getElementById('modalTitle').textContent + '.png';
+            link.click();
+        }
+        
+        // 鼠标滚轮缩放
+        document.getElementById('imageModal').addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            modalZoom = Math.max(0.5, Math.min(5, modalZoom + delta));
+            updateModalImageTransform();
+        });
+        
+        // 拖拽功能
+        const modalImg = document.getElementById('modalImage');
+        modalImg.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            dragStartX = e.clientX - modalPanX * modalZoom;
+            dragStartY = e.clientY - modalPanY * modalZoom;
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            modalPanX = (e.clientX - dragStartX) / modalZoom;
+            modalPanY = (e.clientY - dragStartY) / modalZoom;
+            updateModalImageTransform();
+        });
+        
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+        
+        // 查看结果图
+        function showResultImage() {
+            if (!detectionResult || !detectionResult.imageWithOverlay) {
+                showError('请先进行检测');
+                return;
+            }
+            document.getElementById('modalImage').src = detectionResult.imageWithOverlay;
+            document.getElementById('modalTitle').textContent = '检测结果图';
+            document.getElementById('imageModal').classList.add('active');
+            resetImageZoom();
+        }
+        
+        // 下载结果图
+        function downloadResultImage() {
+            if (!detectionResult || !detectionResult.imageWithOverlay) {
+                showError('请先进行检测');
+                return;
+            }
+            
+            const dataUrl = detectionResult.imageWithOverlay;
+            let timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+            
+            // 将base64转换为blob
+            const parts = dataUrl.split(',');
+            const mime = parts[0].match(/:(.*?);/)[1];
+            const bstr = atob(parts[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            
+            const blob = new Blob([u8arr], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '检测结果图_' + timestamp + '.jpg';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // 页面加载完成后启动摄像头
+        window.onload = function() {
+            startCamera();
+            initCameraType();  // 初始化摄像头类型
+            updateFrameSizeLabel();  // 初始化检测框尺寸显示
+        };
+        
+        // 窗口大小变化时更新标定框位置
+        window.onresize = updateFramePosition;
+    </script>
+</body>
+</html>

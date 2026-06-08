@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>种子检测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8892b0;
+            margin-bottom: 30px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+        @media (max-width: 1000px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+        
+        /* 卡片样式 */
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card-title {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, #00d2ff, #3a7bd5);
+            border-radius: 2px;
+        }
+        
+        /* 视频/图像容器 */
+        .video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #video, #image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #image { display: none; position: absolute; top: 0; left: 0; }
+        
+        /* 标定框 */
+        .calibration-frame {
+            position: absolute;
+            border: 3px solid #ff4757;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        }
+        .frame-label {
+            position: absolute;
+            background: #ff4757;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .frame-label.top { top: -30px; left: 50%; transform: translateX(-50%); }
+        .frame-label.bottom { bottom: -30px; left: 50%; transform: translateX(-50%); }
+        .frame-label.left { left: -55px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+        .frame-label.right { right: -55px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+        
+        /* 尺寸标注刻度 */
+        .ruler {
+            position: absolute;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ruler.horizontal {
+            left: 0;
+            right: 0;
+            height: 20px;
+        }
+        .ruler.horizontal.top { top: -22px; }
+        .ruler.horizontal.bottom { bottom: -22px; }
+        .ruler.vertical {
+            top: 0;
+            bottom: 0;
+            width: 20px;
+            flex-direction: column;
+        }
+        .ruler.vertical.left { left: -22px; }
+        .ruler.vertical.right { right: -22px; }
+        
+        .tick {
+            background: #ff4757;
+        }
+        .tick.major { width: 2px; height: 10px; }
+        .tick.minor { width: 1px; height: 5px; }
+        .tick-label {
+            color: #ff4757;
+            font-size: 10px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        /* 按钮样式 */
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #00d2ff, #3a7bd5); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0,210,255,0.4); }
+        .btn-success { background: linear-gradient(135deg, #00b894, #00cec9); color: white; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0,184,148,0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        /* 结果区域 */
+        .result-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+        .count-display {
+            text-align: center;
+            padding: 20px;
+        }
+        .count-number {
+            font-size: 5em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d2ff, #00b894);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .count-label { color: #8892b0; margin-top: 5px; }
+        
+        /* 统计数据 */
+        .stats { margin-top: 20px; }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .stat-label { color: #8892b0; }
+        .stat-value {
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 4px;
+            background: rgba(0,210,255,0.2);
+        }
+        
+        /* 参数设置 */
+        .settings { margin-top: 15px; }
+        .setting-row {
+            margin-bottom: 15px;
+        }
+        .setting-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .setting-value { color: #00d2ff; font-weight: bold; }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            cursor: pointer;
+        }
+        
+        /* 提示信息 */
+        .info-box {
+            background: rgba(255,193,7,0.1);
+            border: 1px solid rgba(255,193,7,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #ffc107;
+        }
+        .success-box {
+            background: rgba(0,184,148,0.1);
+            border: 1px solid rgba(0,184,148,0.3);
+            color: #00b894;
+        }
+        .error-box {
+            background: rgba(255,71,87,0.1);
+            border: 1px solid rgba(255,71,87,0.3);
+            color: #ff4757;
+        }
+        
+        /* 导出按钮 */
+        .export-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .export-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .export-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        /* 加载动画 */
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 15px; color: #8892b0; }
+        
+        /* 框尺寸显示 */
+        .frame-size-box {
+            background: rgba(0,210,255,0.1);
+            border: 1px solid rgba(0,210,255,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        .frame-size-title { font-size: 12px; color: #8892b0; }
+        .frame-size-value { font-size: 1.5em; font-weight: bold; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔴 种子检测系统</h1>
+        <p class="subtitle">检测种子/丸子 | 检测框 6cm × 6cm | 广角摄像头</p>
+        
+        <div class="main-content">
+            <!-- 左侧：摄像头/图像区域 -->
+            <div>
+                <div class="card">
+                    <div class="card-title">摄像头预览</div>
+                    
+                    <div class="video-container">
+                        <video id="video" autoplay playsinline muted></video>
+                        <img id="image" alt="拍摄结果">
+                        
+                        <!-- 标定框 -->
+                        <div class="calibration-frame" id="frame">
+                            <!-- 尺寸标注 - 顶部 -->
+                            <div class="frame-label top" id="frameTopLabel">60mm</div>
+                            <!-- 尺寸标注 - 底部 -->
+                            <div class="frame-label bottom" id="frameBottomLabel">60mm</div>
+                            <!-- 尺寸标注 - 左侧 -->
+                            <div class="frame-label left" id="frameLeftLabel">60mm</div>
+                            <!-- 尺寸标注 - 右侧 -->
+                            <div class="frame-label right" id="frameRightLabel">60mm</div>
+                        </div>
+                        
+                        <!-- 加载动画 -->
+                        <div class="loading" id="loading">
+                            <div class="spinner"></div>
+                            <div class="loading-text">正在检测中...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 控制按钮 -->
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="captureBtn" onclick="capturePhoto()">
+                            📷 拍照
+                        </button>
+                        <button class="btn btn-secondary" id="cameraBtn" onclick="toggleCamera()">
+                            🎥 关闭摄像头
+                        </button>
+                    </div>
+                    
+                    <div class="btn-group" id="detectBtns" style="display:none;">
+                        <button class="btn btn-secondary" onclick="retakePhoto()">🔄 重新拍照</button>
+                        <button class="btn btn-success" id="detectBtn" onclick="detectBalls()">🎯 开始检测</button>
+                    </div>
+                    
+                    <!-- 状态提示 -->
+                    <div id="statusBox"></div>
+                </div>
+                
+                <!-- 参数设置 -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">参数设置</div>
+                    
+                    <div class="settings">
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>二值化阈值</span>
+                                <span class="setting-value" id="thresholdValue">100</span>
+                            </div>
+                            <input type="range" id="threshold" min="50" max="200" value="100" 
+                                   oninput="updateSetting('threshold')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>标定框宽度 (mm)</span>
+                                <span class="setting-value" id="frameWidthValue">60</span>
+                            </div>
+                            <input type="range" id="calibrationWidth" min="20" max="150" value="60"
+                                   oninput="updateSetting('calibrationWidth')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>标定框高度 (mm)</span>
+                                <span class="setting-value" id="calibrationHeightValue">60</span>
+                            </div>
+                            <input type="range" id="calibrationHeight" min="20" max="150" value="60"
+                                   oninput="updateSetting('calibrationHeight')">
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">
+                                <span>畸变补偿系数</span>
+                                <span class="setting-value" id="distortionValue">1.00</span>
+                            </div>
+                            <input type="range" id="distortion" min="50" max="150" value="100"
+                                   oninput="updateSetting('distortion')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：结果区域 -->
+            <div>
+                <div class="card">
+                    <div class="card-title">检测结果</div>
+                    
+                    <div id="resultArea">
+                        <!-- 框尺寸 -->
+                        <div class="frame-size-box">
+                            <div class="frame-size-title">检测框尺寸</div>
+                            <div class="frame-size-value" id="frameRealSize">60 × 60 mm</div>
+                        </div>
+                        
+                        <!-- 数量统计 -->
+                        <div class="result-box">
+                            <div class="count-display">
+                                <div class="count-number" id="countNumber">0</div>
+                                <div class="count-label">检测到的种子数量</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 统计数据 -->
+                        <div class="stats">
+                            <div class="stat-row">
+                                <span class="stat-label">最小直径</span>
+                                <span class="stat-value" id="minSize">-- mm</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">最大直径</span>
+                                <span class="stat-value" id="maxSize">-- mm</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">平均直径</span>
+                                <span class="stat-value" id="avgSize">-- mm</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 导出按钮 -->
+                        <div class="export-btns">
+                            <button class="export-btn" onclick="exportData('csv')">📥 导出CSV</button>
+                            <button class="export-btn" onclick="exportData('json')">📥 导出JSON</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 使用说明 -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">使用说明</div>
+                    <div class="info-box">
+                        <p>1. 将种子放入 6cm×6cm 黑色框内</p>
+                        <p>2. 用广角摄像头对准黑框拍摄</p>
+                        <p>3. 点击"拍照"按钮捕获图像</p>
+                        <p>4. 点击"开始检测"分析结果</p>
+                        <p>5. 导出CSV/JSON格式数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <script>
+        // 全局变量
+        let video = document.getElementById('video');
+        let image = document.getElementById('image');
+        let canvas = document.getElementById('canvas');
+        let frame = document.getElementById('frame');
+        let loading = document.getElementById('loading');
+        let stream = null;
+        let capturedImageData = null;
+        let detectionResult = null;
+        
+        // 检测参数
+        let params = {
+            threshold: 100,
+            calibrationWidth: 60,
+            calibrationHeight: 60,
+            distortion: 1.0,
+            frameOffsetX: 0,
+            frameOffsetY: 0,
+            frameWidthPct: 50,
+            frameHeightPct: 50
+        };
+        
+        // 启动摄像头
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                image.style.display = 'none';
+                frame.style.display = 'block';
+                updateFramePosition();
+                document.getElementById('cameraBtn').innerHTML = '🎥 关闭摄像头';
+                document.getElementById('captureBtn').disabled = false;
+            } catch (err) {
+                showError('无法访问摄像头: ' + err.message);
+            }
+        }
+        
+        // 关闭摄像头
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.style.display = 'none';
+            frame.style.display = 'none';
+            document.getElementById('cameraBtn').innerHTML = '🎥 开启摄像头';
+            document.getElementById('captureBtn').disabled = true;
+        }
+        
+        // 切换摄像头
+        function toggleCamera() {
+            if (stream) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        }
+        
+        // 更新标定框位置
+        function updateFramePosition() {
+            const container = video.parentElement;
+            const w = container.offsetWidth;
+            const h = container.offsetHeight;
+            
+            // 强制使用正方形 - 取宽高的较小值
+            const frameSize = Math.min(w * params.frameWidthPct / 100, h * params.frameHeightPct / 100);
+            
+            frame.style.width = frameSize + 'px';
+            frame.style.height = frameSize + 'px';
+            frame.style.left = (w / 2 - frameSize / 2 + w * params.frameOffsetX / 100) + 'px';
+            frame.style.top = (h / 2 - frameSize / 2 + h * params.frameOffsetY / 100) + 'px';
+            
+            // 更新尺寸标签 - 四边都显示相同尺寸
+            const sizeLabel = params.calibrationWidth + 'mm';
+            document.getElementById('frameTopLabel').textContent = sizeLabel;
+            document.getElementById('frameBottomLabel').textContent = sizeLabel;
+            document.getElementById('frameLeftLabel').textContent = sizeLabel;
+            document.getElementById('frameRightLabel').textContent = sizeLabel;
+            document.getElementById('frameRealSize').textContent = 
+                params.calibrationWidth + ' × ' + params.calibrationWidth + ' mm';
+        }
+        
+        // 拍照
+        async function capturePhoto() {
+            if (!stream) return;
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            let ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedImageData = canvas.toDataURL('image/jpeg', 0.9);
+            image.src = capturedImageData;
+            image.style.display = 'block';
+            video.style.display = 'none';
+            frame.style.display = 'none';
+            
+            document.getElementById('captureBtn').parentElement.style.display = 'none';
+            document.getElementById('detectBtns').style.display = 'flex';
+            
+            // 自动检测黑框
+            autoDetectFrame();
+        }
+        
+        // 重新拍照
+        function retakePhoto() {
+            capturedImageData = null;
+            detectionResult = null;
+            image.style.display = 'none';
+            video.style.display = 'block';
+            frame.style.display = 'block';
+            
+            document.getElementById('captureBtn').parentElement.style.display = 'flex';
+            document.getElementById('detectBtns').style.display = 'none';
+            document.getElementById('statusBox').innerHTML = '';
+            
+            resetResults();
+        }
+        
+        // 自动检测黑框
+        async function autoDetectFrame() {
+            try {
+                let response = await fetch('/api/detect-frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: capturedImageData })
+                });
+                
+                let data = await response.json();
+                
+                if (data.found) {
+                    params.frameOffsetX = data.offsetX;
+                    params.frameOffsetY = data.offsetY;
+                    params.frameWidthPct = data.frameWidth;
+                    params.frameHeightPct = data.frameHeight;
+                    
+                    showSuccess('已自动识别黑框位置');
+                } else {
+                    showInfo('未检测到黑框，请手动调整参数');
+                }
+            } catch (err) {
+                console.error('自动检测失败:', err);
+            }
+        }
+        
+        // 执行检测
+        async function detectBalls() {
+            if (!capturedImageData) return;
+            
+            loading.style.display = 'flex';
+            document.getElementById('detectBtn').disabled = true;
+            
+            try {
+                let response = await fetch('/api/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: capturedImageData,
+                        threshold: params.threshold,
+                        minSize: 0.5,
+                        maxSize: 10.0,
+                        calibrationWidth: params.calibrationWidth,
+                        calibrationHeight: params.calibrationHeight,
+                        offsetX: params.frameOffsetX,
+                        offsetY: params.frameOffsetY,
+                        frameWidth: params.frameWidthPct,
+                        frameHeight: params.frameHeightPct,
+                        distortionCompensation: params.distortion
+                    })
+                });
+                
+                let data = await response.json();
+                
+                if (data.success) {
+                    detectionResult = data;
+                    updateResults(data);
+                    
+                    // 更新图像
+                    if (data.imageWithOverlay) {
+                        image.src = data.imageWithOverlay;
+                        capturedImageData = data.imageWithOverlay;
+                    }
+                    
+                    showSuccess('检测完成，共找到 ' + data.count + ' 个种子');
+                } else {
+                    showError(data.error || '检测失败');
+                }
+            } catch (err) {
+                showError('检测失败: ' + err.message);
+            } finally {
+                loading.style.display = 'none';
+                document.getElementById('detectBtn').disabled = false;
+            }
+        }
+        
+        // 更新结果显示
+        function updateResults(data) {
+            document.getElementById('countNumber').textContent = data.count;
+            document.getElementById('minSize').textContent = data.minSize.toFixed(2) + ' mm';
+            document.getElementById('maxSize').textContent = data.maxSize.toFixed(2) + ' mm';
+            document.getElementById('avgSize').textContent = data.avgSize.toFixed(2) + ' mm';
+        }
+        
+        // 重置结果
+        function resetResults() {
+            document.getElementById('countNumber').textContent = '0';
+            document.getElementById('minSize').textContent = '-- mm';
+            document.getElementById('maxSize').textContent = '-- mm';
+            document.getElementById('avgSize').textContent = '-- mm';
+        }
+        
+        // 更新设置
+        function updateSetting(name) {
+            let value = document.getElementById(name === 'distortion' ? 'distortion' : name).value;
+            
+            if (name === 'distortion') {
+                value = value / 100;
+                document.getElementById('distortionValue').textContent = value.toFixed(2);
+                params.distortion = value;
+            } else if (name === 'threshold') {
+                document.getElementById('thresholdValue').textContent = value;
+                params.threshold = parseInt(value);
+            } else if (name === 'calibrationWidth') {
+                // 正方形模式：宽高同步
+                document.getElementById('frameWidthValue').textContent = value;
+                document.getElementById('calibrationHeightValue').textContent = value;
+                document.getElementById('calibrationHeight').value = value;
+                params.calibrationWidth = parseInt(value);
+                params.calibrationHeight = parseInt(value);
+                updateFramePosition();
+            } else if (name === 'calibrationHeight') {
+                // 正方形模式：宽高同步
+                document.getElementById('calibrationHeightValue').textContent = value;
+                document.getElementById('frameWidthValue').textContent = value;
+                document.getElementById('calibrationWidth').value = value;
+                params.calibrationHeight = parseInt(value);
+                params.calibrationWidth = parseInt(value);
+                updateFramePosition();
+            }
+        }
+        
+        // 导出数据
+        function exportData(format) {
+            if (!detectionResult || detectionResult.count === 0) {
+                alert('没有可导出的数据');
+                return;
+            }
+            
+            let timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+            let content, filename, mimeType;
+            
+            if (format === 'csv') {
+                let headers = ['编号', '直径(mm)', 'X坐标(px)', 'Y坐标(px)', '半径(px)', '面积(px)', '圆形度'];
+                let rows = detectionResult.balls.map(b => 
+                    [b.id, b.diameter, b.x.toFixed(1), b.y.toFixed(1), b.radius.toFixed(1), b.area, b.circularity]
+                );
+                content = [headers.join(','), ...rows.map(r => r.join(','))].join('\\n');
+                filename = '种子检测数据_' + timestamp + '.csv';
+                mimeType = 'text/csv;charset=utf-8';
+            } else {
+                content = JSON.stringify({
+                    检测时间: new Date().toISOString(),
+                    标定框尺寸: { 宽度_mm: params.calibrationWidth, 高度_mm: params.calibrationHeight },
+                    检测结果: {
+                        数量: detectionResult.count,
+                        最小直径_mm: detectionResult.minSize,
+                        最大直径_mm: detectionResult.maxSize,
+                        平均直径_mm: detectionResult.avgSize
+                    },
+                    种子列表: detectionResult.balls
+                }, null, 2);
+                filename = '种子检测数据_' + timestamp + '.json';
+                mimeType = 'application/json;charset=utf-8';
+            }
+            
+            let blob = new Blob(['\\ufeff' + content], { type: mimeType });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // 显示提示
+        function showSuccess(msg) {
+            document.getElementById('statusBox').innerHTML = 
+                '<div class="info-box success-box" style="margin-top:15px;">✅ ' + msg + '</div>';
+        }
+        
+        function showError(msg) {
+            document.getElementById('statusBox').innerHTML = 
+                '<div class="info-box error-box" style="margin-top:15px;">❌ ' + msg + '</div>';
+        }
+        
+        function showInfo(msg) {
+            document.getElementById('statusBox').innerHTML = 
+                '<div class="info-box" style="margin-top:15px;">ℹ️ ' + msg + '</div>';
+        }
+        
+        // 页面加载完成后启动摄像头
+        window.onload = function() {
+            startCamera();
+        };
+        
+        // 窗口大小变化时更新标定框位置
+        window.onresize = updateFramePosition;
+    </script>
+</body>
+</html>
